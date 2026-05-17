@@ -3,7 +3,7 @@ git status
 
 
 $ver = "v1.1"
-$comment = "ver2 "
+$comment = "first ver "
 
 
 # 2. בקשת אישור מהמשתמש
