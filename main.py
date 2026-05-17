@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from tkinter.scrolledtext import ScrolledText  # רכיב ייעודי לחלון פלט עם גלילה
 from PyPDF2 import PdfWriter, PdfReader
 from PIL import Image
 import fitz  # PyMuPDF
@@ -29,6 +30,8 @@ LOCALIZATION = {
         "output_dir_lbl": "Select Output Folder for Diff PDFs",
         "choose_dir_btn": "Choose Output Folder",
         "compare_btn": "Run Visual Compare",
+        "clear_log_btn": "Clear Log",
+        "console_title": "Execution Log / Console Output:",
         "err_title": "Error",
         "err_no_split_file": "No file selected for splitting!",
         "err_invalid_range": "Please enter a valid range (e.g., 1-5)!",
@@ -66,6 +69,8 @@ LOCALIZATION = {
         "output_dir_lbl": "בחר תיקיית יעד לקבצי הצימוד (Diff)",
         "choose_dir_btn": "בחר תיקיית פלט",
         "compare_btn": "הפעל השוואה חזותית",
+        "clear_log_btn": "נקה לוג",
+        "console_title": "חלון פלט / לוג ריצה:",
         "err_title": "שגיאה",
         "err_no_split_file": "לא נבחר קובץ לפיצול!",
         "err_invalid_range": "בבקשה הכנס טווח עמודים תקין (למשל 1-5)!",
@@ -287,11 +292,11 @@ class PDFComparerFrame(tk.Frame):
         self.lang = "עברית"
 
         self.label = tk.Label(self, font=("Arial", 12, "bold"), fg="purple")
-        self.label.pack(pady=10)
+        self.label.pack(pady=5)
 
         # פאנל פנימי לשני טורים של רשימות קבצים
         self.lists_frame = tk.Frame(self)
-        self.lists_frame.pack(fill=tk.BOTH, expand=True, padx=5)
+        self.lists_frame.pack(fill=tk.X, padx=5)
 
         # טור שמאל - קבצים ישנים
         self.old_frame = tk.Frame(self.lists_frame)
@@ -300,10 +305,8 @@ class PDFComparerFrame(tk.Frame):
         self.old_lbl.pack()
         self.old_btn = tk.Button(self.old_frame, text="+", command=lambda: self.add_compare_files("old"))
         self.old_btn.pack(pady=2)
-        self.old_listbox = tk.Listbox(self.old_frame, width=25, height=6)
+        self.old_listbox = tk.Listbox(self.old_frame, width=22, height=5)
         self.old_listbox.pack(fill=tk.BOTH, expand=True)
-
-        # כפתורי ניהול קבצים ישנים
         self.create_management_buttons(self.old_frame, "old")
 
         # טור ימין - קבצים חדשים
@@ -313,24 +316,38 @@ class PDFComparerFrame(tk.Frame):
         self.new_lbl.pack()
         self.new_btn = tk.Button(self.new_frame, text="+", command=lambda: self.add_compare_files("new"))
         self.new_btn.pack(pady=2)
-        self.new_listbox = tk.Listbox(self.new_frame, width=25, height=6)
+        self.new_listbox = tk.Listbox(self.new_frame, width=22, height=5)
         self.new_listbox.pack(fill=tk.BOTH, expand=True)
-
-        # כפתורי ניהול קבצים חדשים
         self.create_management_buttons(self.new_frame, "new")
 
         # בחירת תיקיית פלט לתוצאות
         self.dir_frame = tk.Frame(self)
-        self.dir_frame.pack(pady=10, fill=tk.X)
-        self.dir_lbl = tk.Label(self.dir_frame, text="", wraplength=200, fg="gray")
+        self.dir_frame.pack(pady=5, fill=tk.X)
+        self.dir_lbl = tk.Label(self.dir_frame, text="", wraplength=220, fg="gray", font=("Arial", 9))
         self.dir_lbl.pack()
         self.dir_btn = tk.Button(self.dir_frame, command=self.choose_output_dir)
         self.dir_btn.pack(pady=2)
 
-        # כפתור הפעלה ראשי
-        self.compare_button = tk.Button(self, command=self.run_visual_compare, bg="purple", fg="white",
-                                        font=("Arial", 11, "bold"))
-        self.compare_button.pack(pady=10)
+        # כפתורי הפעלה וניקוי לוג בשורה אחת
+        self.control_frame = tk.Frame(self)
+        self.control_frame.pack(pady=5)
+
+        self.compare_button = tk.Button(self.control_frame, command=self.run_visual_compare, bg="purple", fg="white",
+                                        font=("Arial", 10, "bold"))
+        self.compare_button.pack(side=tk.LEFT, padx=5)
+
+        self.clear_log_button = tk.Button(self.control_frame, command=self.clear_log, font=("Arial", 10))
+        self.clear_log_button.pack(side=tk.LEFT, padx=5)
+
+        # חלון פלט דמוי קונסול (Console Output Window)
+        self.console_label = tk.Label(self, font=("Arial", 9, "bold"))
+        self.console_label.pack(anchor=tk.W if self.lang == "English" else tk.E, padx=5, pady=(5, 0))
+
+        # תיבת טקסט לבנה עם גלילה (ScrolledText)
+        self.console_text = ScrolledText(self, height=8, width=40, bg="white", fg="black", font=("Consolas", 9))
+        self.console_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # הפיכת החלון ל-Disabled כברירת מחדל כדי שהמשתמש לא יקליד בפנים בטעות
+        self.console_text.config(state=tk.DISABLED)
 
     def create_management_buttons(self, parent_frame, list_type):
         btn_frame = tk.Frame(parent_frame)
@@ -348,10 +365,29 @@ class PDFComparerFrame(tk.Frame):
         self.new_lbl.config(text=strings["new_files_lbl"])
         self.dir_btn.config(text=strings["choose_dir_btn"])
         self.compare_button.config(text=strings["compare_btn"])
+        self.clear_log_button.config(text=strings["clear_log_btn"])
+        self.console_label.config(text=strings["console_title"])
+
+        # עדכון כיוון יישור הכותרת של הקונסול
+        self.console_label.pack_configure(anchor=tk.W if lang == "English" else tk.E)
+
         if not self.output_dir:
             self.dir_lbl.config(text=strings["output_dir_lbl"])
         else:
             self.dir_lbl.config(text=f"{strings['selected']} {self.output_dir}")
+
+    def log_to_console(self, text_message):
+        """פונקציית עזר להזרקת שורות לחלון הפלט בזמן אמת"""
+        self.console_text.config(state=tk.NORMAL)  # פתיחה לכתיבה
+        self.console_text.insert(tk.END, text_message + "\n")
+        self.console_text.see(tk.END)  # גלילה אוטומטית לסוף הטקסט
+        self.console_text.config(state=tk.DISABLED)  # נעילה מחדש
+        self.update_idletasks()  # מאלץ את ה-GUI לרענן את המסך מיד!
+
+    def clear_log(self):
+        self.console_text.config(state=tk.NORMAL)
+        self.console_text.delete(1.0, tk.END)
+        self.console_text.config(state=tk.DISABLED)
 
     def add_compare_files(self, list_type):
         file_paths = filedialog.askopenfilenames(filetypes=[("PDF files", "*.pdf")])
@@ -361,7 +397,6 @@ class PDFComparerFrame(tk.Frame):
         for path in file_paths:
             if path not in target_list:
                 target_list.append(path)
-                # נציג רק את שם הקובץ ללא הנתיב המלא לצורך נוחות ויזואלית ב-GUI
                 target_listbox.insert(tk.END, path.split('/')[-1])
 
     def clear_list(self, list_type):
@@ -422,10 +457,15 @@ class PDFComparerFrame(tk.Frame):
             messagebox.showerror(strings["err_title"], strings["err_no_out_dir"])
             return
 
+        self.log_to_console("++++++++++++++++++++++++++++++")
+        self.log_to_console("Starting Visual PDF Compare...")
+
         for inx in range(len(self.old_files)):
             old_path = self.old_files[inx]
             new_path = self.new_files[inx]
             file_name = old_path.split('/')[-1][:-4]
+
+            self.log_to_console(f"Processing: {old_path.split('/')[-1]}")
 
             olddoc = fitz.open(old_path)
             newdoc = fitz.open(new_path)
@@ -435,9 +475,10 @@ class PDFComparerFrame(tk.Frame):
             newdoc.close()
 
             if Np_new != Np_old:
-                messagebox.showerror(strings["err_title"],
-                                     strings["err_page_count_mismatch"].format(idx=inx + 1, old_p=Np_old, new_p=Np_new,
-                                                                               name=file_name))
+                err_msg = strings["err_page_count_mismatch"].format(idx=inx + 1, old_p=Np_old, new_p=Np_new,
+                                                                    name=file_name)
+                self.log_to_console(f"ERROR: {err_msg}")
+                messagebox.showerror(strings["err_title"], err_msg)
                 return
 
             diffarray1 = []
@@ -448,12 +489,13 @@ class PDFComparerFrame(tk.Frame):
                 image_old = self.read_page_as_1bit_array(old_path, page_num)
                 image_new = self.read_page_as_1bit_array(new_path, page_num)
 
-                # לוגיקת החיתוך והשוואת הביטים מהקוד המקורי שלך (XOR)
                 diff = image_old ^ image_new
                 num_differing_pixels = np.sum(diff)
 
                 if num_differing_pixels > 0:
                     difflag = True
+                    self.log_to_console(
+                        f"  -> Page num {page_num + 1} num_differing_pixels={num_differing_pixels} is NOT OK!!!")
                     diff = np.logical_not(diff)
                     concatenated_images = np.concatenate([image_old, image_new, diff], axis=1)
 
@@ -462,22 +504,25 @@ class PDFComparerFrame(tk.Frame):
 
                     diffarray3.append(diff_image3)
                     diffarray1.append(diff_image1)
+                else:
+                    self.log_to_console(f"  -> Page num {page_num + 1} is OK.")
 
             if difflag:
                 diff_path1 = f"{self.output_dir}/diff_{file_name}_mode1.pdf"
                 diff_path3 = f"{self.output_dir}/diff_{file_name}_mode3.pdf"
                 diffarray1[0].save(diff_path1, save_all=True, append_images=diffarray1[1:])
                 diffarray3[0].save(diff_path3, save_all=True, append_images=diffarray3[1:])
+                self.log_to_console(f"Diff saved for {file_name}")
 
+        self.log_to_console("Compare finished completely.")
         messagebox.showinfo(strings["success_title"], strings["compare_complete"])
 
 
 class MainApplication:
     def __init__(self, root):
         self.root = root
-        self.root.geometry("1100x650")  # הרחבנו את החלון כדי שיכיל 3 עמודות בצורה מרווחת
+        self.root.geometry("1150x700")  # הגדלנו את הגובה מעט בשביל תיבת הקונסול
 
-        # פאנל עליון לבחירת שפה
         self.top_frame = tk.Frame(root)
         self.top_frame.pack(side=tk.TOP, fill=tk.X, pady=10)
 
@@ -491,11 +536,9 @@ class MainApplication:
                                          command=self.on_language_change, font=("Arial", 11, "bold"))
         self.rb_english.pack(side=tk.TOP, anchor=tk.CENTER)
 
-        # פאנל מרכזי לשלושת הכלים
         self.content_frame = tk.Frame(root)
         self.content_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # יצירת שלושת הפאנלים
         self.splitter_frame = PDFSplitterFrame(self.content_frame)
         self.merger_frame = PDFMergerFrame(self.content_frame)
         self.comparer_frame = PDFComparerFrame(self.content_frame)
@@ -515,12 +558,10 @@ class MainApplication:
         self.comparer_frame.pack_forget()
 
         if lang == "עברית":
-            # מימין לשמאל בעברית: השוואה -> פיצול -> מיזוג
             self.comparer_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
             self.splitter_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
             self.merger_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
         else:
-            # משמאל לימין באנגלית: פיצול -> מיזוג -> השוואה
             self.splitter_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
             self.merger_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
             self.comparer_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)

@@ -2,8 +2,8 @@
 git status
 
 
-$ver = "v1.4"
-$comment = "support pdf compare "
+$ver = "v1.5"
+$comment = "support pdf compare with output window"
 
 
 # 2. בקשת אישור מהמשתמש
