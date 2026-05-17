@@ -2,8 +2,8 @@
 git status
 
 
-$ver = "v1.1"
-$comment = "first ver "
+$ver = "v1.2"
+$comment = "support hebrew menu "
 
 
 # 2. בקשת אישור מהמשתמש

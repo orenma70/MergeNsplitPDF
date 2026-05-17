@@ -2,53 +2,131 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PyPDF2 import PdfWriter, PdfReader
 
+# מילון תרגומים מרכזי לאפליקציה
+LOCALIZATION = {
+    "English": {
+        "title": "PDF Swiss Army Knife - Split & Merge",
+        "splitter_title": "PDF Splitter",
+        "choose_split": "Choose PDF to Split",
+        "no_file": "No file selected",
+        "selected": "Selected:",
+        "insert_pages": "Insert pages to split\n(e.g., 1-5, 6-10):",
+        "split_btn": "Split PDF",
+        "clear_split": "Clear Split File",
+        "merger_title": "PDF Merger",
+        "add_files": "Add PDF Files",
+        "move_up": "Move Up",
+        "move_down": "Move Down",
+        "delete_file": "Delete File",
+        "clear_sel": "Clear Selection",
+        "merge_btn": "Merge PDFs",
+        "err_title": "Error",
+        "err_no_split_file": "No file selected for splitting!",
+        "err_invalid_range": "Please enter a valid range (e.g., 1-5)!",
+        "err_out_of_bounds": "Range out of bounds. File has {total} pages.",
+        "err_fail_split": "Failed to split at range '{page_range}':\n{error}",
+        "success_title": "Success",
+        "success_split": "PDF files split successfully!",
+        "err_no_merge_files": "No files selected!",
+        "success_merge": "PDF files merged successfully!",
+        "err_general": "An error occurred: {error}"
+    },
+    "עברית": {
+        "title": "אולר שוויצרי ל-PDF - פיצול ומיזוג",
+        "splitter_title": "פיצול PDF",
+        "choose_split": "בחר קובץ לפיצול",
+        "no_file": "לא נבחר קובץ",
+        "selected": "נבחר:",
+        "insert_pages": "הכנס טווחי עמודים לפיצול\n(דוגמה: 1-5, 6-10):",
+        "split_btn": "פצל PDF",
+        "clear_split": "נקה קובץ שנבחר",
+        "merger_title": "מיזוג PDF",
+        "add_files": "הוסף קבצי PDF",
+        "move_up": "הזז למעלה",
+        "move_down": "הזז למטה",
+        "delete_file": "מחק קובץ",
+        "clear_sel": "נקה בחירה",
+        "merge_btn": "מזג קבצים",
+        "err_title": "שגיאה",
+        "err_no_split_file": "לא נבחר קובץ לפיצול!",
+        "err_invalid_range": "בבקשה הכנס טווח עמודים תקין (למשל 1-5)!",
+        "err_out_of_bounds": "הטווח מחוץ לגבולות הקובץ. בקובץ יש {total} עמודים.",
+        "err_fail_split": "הפיצול נכשל בטווח '{page_range}':\n{error}",
+        "success_title": "הצלחה",
+        "success_split": "הקובץ פוצל בהצלחה!",
+        "err_no_merge_files": "לא נבחרו קבצים למיזוג!",
+        "success_merge": "הקבצים מוזגו בהצלחה!",
+        "err_general": "התרחשה שגיאה: {error}"
+    }
+}
+
 
 class PDFSplitterFrame(tk.Frame):
     def __init__(self, master):
-        # תיקון השגיאה: שימוש ב-padx ו-pady מתוך פונקציית ה-pack במקום padding ב-init
         super().__init__(master, bd=2, relief=tk.GROOVE)
         self.split_file = None
+        self.lang = "עברית"
 
-        # PDF Splitter Section Title
-        self.label = tk.Label(self, text="PDF Splitter", font=("Arial", 14, "bold"), fg="blue")
+        # אלמנטים גרפיים
+        self.label = tk.Label(self, font=("Arial", 14, "bold"), fg="blue")
         self.label.pack(pady=10)
 
-        self.choose_button = tk.Button(self, text="Choose PDF to Split", command=self.choose_split_file)
+        self.choose_button = tk.Button(self, command=self.choose_split_file)
         self.choose_button.pack(pady=5)
 
-        self.file_label = tk.Label(self, text="No file selected", fg="gray", wraplength=250)
+        self.file_label = tk.Label(self, fg="gray", wraplength=250)
         self.file_label.pack(pady=5)
 
-        self.range_label = tk.Label(self, text="Insert pages to split\n(e.g., 1-5, 6-10):")
+        self.range_label = tk.Label(self)
         self.range_label.pack(pady=5)
 
         self.range_entry = tk.Entry(self, width=25)
         self.range_entry.pack(pady=5)
 
-        self.split_button = tk.Button(self, text="Split PDF", command=self.split_pdf, bg="blue", fg="white")
+        self.split_button = tk.Button(self, command=self.split_pdf, bg="blue", fg="white")
         self.split_button.pack(pady=5)
 
-        self.clear_split_button = tk.Button(self, text="Clear Split File", command=self.clear_split_file)
+        self.clear_split_button = tk.Button(self, command=self.clear_split_file)
         self.clear_split_button.pack(pady=5)
+
+        self.update_ui_strings("עברית")
+
+    def update_ui_strings(self, lang):
+        self.lang = lang
+        strings = LOCALIZATION[lang]
+
+        self.label.config(text=strings["splitter_title"])
+        self.choose_button.config(text=strings["choose_split"])
+        self.range_label.config(text=strings["insert_pages"])
+        self.split_button.config(text=strings["split_btn"])
+        self.clear_split_button.config(text=strings["clear_split"])
+
+        if not self.split_file:
+            self.file_label.config(text=strings["no_file"])
+        else:
+            self.file_label.config(text=f"{strings['selected']}\n{self.split_file}")
 
     def choose_split_file(self):
         self.split_file = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
         if self.split_file:
-            self.file_label.config(text=f"Selected:\n{self.split_file}", fg="black")
+            strings = LOCALIZATION[self.lang]
+            self.file_label.config(text=f"{strings['selected']}\n{self.split_file}", fg="black")
 
     def clear_split_file(self):
         self.split_file = None
-        self.file_label.config(text="No file selected", fg="gray")
+        strings = LOCALIZATION[self.lang]
+        self.file_label.config(text=strings["no_file"], fg="gray")
         self.range_entry.delete(0, tk.END)
 
     def split_pdf(self):
+        strings = LOCALIZATION[self.lang]
         if not self.split_file:
-            messagebox.showerror("Error", "No file selected for splitting!")
+            messagebox.showerror(strings["err_title"], strings["err_no_split_file"])
             return
 
         raw_ranges = self.range_entry.get().strip()
         if not raw_ranges:
-            messagebox.showerror("Error", "Please enter a valid range (e.g., 1-5)!")
+            messagebox.showerror(strings["err_title"], strings["err_invalid_range"])
             return
 
         page_ranges = raw_ranges.split(',')
@@ -59,13 +137,11 @@ class PDFSplitterFrame(tk.Frame):
             try:
                 start, end = map(int, page_range.split('-'))
 
-                # Validation to avoid index crash
                 if start < 1 or end > total_pages or start > end:
-                    raise ValueError(f"Range out of bounds. File has {total_pages} pages.")
+                    raise ValueError(strings["err_out_of_bounds"].format(total=total_pages))
 
                 pdf_writer = PdfWriter()
 
-                # Adding specified page range to the new PDF (0-indexed)
                 for page in range(start - 1, end):
                     pdf_writer.add_page(pdf_reader.pages[page])
 
@@ -75,41 +151,56 @@ class PDFSplitterFrame(tk.Frame):
                     pdf_writer.write(out_pdf)
 
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to split at range '{page_range}':\n{str(e)}")
+                messagebox.showerror(strings["err_title"],
+                                     strings["err_fail_split"].format(page_range=page_range, error=str(e)))
                 return
 
-        messagebox.showinfo("Success", "PDF files split successfully!")
+        messagebox.showinfo(strings["success_title"], strings["success_split"])
 
 
 class PDFMergerFrame(tk.Frame):
     def __init__(self, master):
         super().__init__(master, bd=2, relief=tk.GROOVE)
         self.files = []
+        self.lang = "עברית"
 
-        # PDF Merger Section Title
-        self.label = tk.Label(self, text="PDF Merger", font=("Arial", 14, "bold"), fg="green")
+        self.label = tk.Label(self, font=("Arial", 14, "bold"), fg="green")
         self.label.pack(pady=10)
 
-        self.add_button = tk.Button(self, text="Add PDF Files", command=self.add_files)
+        self.add_button = tk.Button(self, command=self.add_files)
         self.add_button.pack(pady=2)
 
         self.files_listbox = tk.Listbox(self, width=40, height=8)
         self.files_listbox.pack(pady=5)
 
-        self.move_up_button = tk.Button(self, text="Move Up", command=self.move_up)
+        self.move_up_button = tk.Button(self, command=self.move_up)
         self.move_up_button.pack(pady=2)
 
-        self.move_down_button = tk.Button(self, text="Move Down", command=self.move_down)
+        self.move_down_button = tk.Button(self, command=self.move_down)
         self.move_down_button.pack(pady=2)
 
-        self.delete_button = tk.Button(self, text="Delete File", command=self.delete_file)
+        self.delete_button = tk.Button(self, command=self.delete_file)
         self.delete_button.pack(pady=2)
 
-        self.clear_button = tk.Button(self, text="Clear Selection", command=self.clear_files)
+        self.clear_button = tk.Button(self, command=self.clear_files)
         self.clear_button.pack(pady=2)
 
-        self.merge_button = tk.Button(self, text="Merge PDFs", command=self.merge_pdfs, bg="green", fg="white")
+        self.merge_button = tk.Button(self, command=self.merge_pdfs, bg="green", fg="white")
         self.merge_button.pack(pady=10)
+
+        self.update_ui_strings("עברית")
+
+    def update_ui_strings(self, lang):
+        self.lang = lang
+        strings = LOCALIZATION[lang]
+
+        self.label.config(text=strings["merger_title"])
+        self.add_button.config(text=strings["add_files"])
+        self.move_up_button.config(text=strings["move_up"])
+        self.move_down_button.config(text=strings["move_down"])
+        self.delete_button.config(text=strings["delete_file"])
+        self.clear_button.config(text=strings["clear_sel"])
+        self.merge_button.config(text=strings["merge_btn"])
 
     def add_files(self):
         file_paths = filedialog.askopenfilenames(filetypes=[("PDF files", "*.pdf")])
@@ -148,7 +239,8 @@ class PDFMergerFrame(tk.Frame):
             del self.files[idx]
             self.update_listbox()
         except IndexError:
-            messagebox.showerror("Error", "No file selected!")
+            strings = LOCALIZATION[self.lang]
+            messagebox.showerror(strings["err_title"], strings["delete_file"])
 
     def update_listbox(self):
         self.files_listbox.delete(0, tk.END)
@@ -156,8 +248,9 @@ class PDFMergerFrame(tk.Frame):
             self.files_listbox.insert(tk.END, file)
 
     def merge_pdfs(self):
+        strings = LOCALIZATION[self.lang]
         if not self.files:
-            messagebox.showerror("Error", "No files selected!")
+            messagebox.showerror(strings["err_title"], strings["err_no_merge_files"])
             return
 
         pdf_writer = PdfWriter()
@@ -170,22 +263,68 @@ class PDFMergerFrame(tk.Frame):
             if output_file:
                 with open(output_file, 'wb') as out_pdf:
                     pdf_writer.write(out_pdf)
-                messagebox.showinfo("Success", "PDF files merged successfully!")
+                messagebox.showinfo(strings["success_title"], strings["success_merge"])
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+            messagebox.showerror(strings["err_title"], strings["err_general"].format(error=str(e)))
+
+
+class MainApplication:
+    def __init__(self, root):
+        self.root = root
+        self.root.geometry("750x600")  # הגדלנו מעט את הגובה בשביל כפתורי הרדיו
+
+        # פאנל עליון לבחירת שפה
+        self.top_frame = tk.Frame(root)
+        self.top_frame.pack(side=tk.TOP, fill=tk.X, pady=10)
+
+        # משתנה של Tkinter שיחזיק את השפה שנבחרה
+        self.lang_var = tk.StringVar(value="עברית")
+
+        # יצירת כפתורי הרדיו (Radio Buttons)
+        self.rb_hebrew = tk.Radiobutton(self.top_frame, text="עברית", variable=self.lang_var, value="עברית",
+                                        command=self.on_language_change, font=("Arial", 11, "bold"))
+        self.rb_hebrew.pack(side=tk.TOP, anchor=tk.CENTER)
+
+        self.rb_english = tk.Radiobutton(self.top_frame, text="English", variable=self.lang_var, value="English",
+                                         command=self.on_language_change, font=("Arial", 11, "bold"))
+        self.rb_english.pack(side=tk.TOP, anchor=tk.CENTER)
+
+        # פאנל מרכזי שיכיל את המיזוג והפיצול
+        self.content_frame = tk.Frame(root)
+        self.content_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # יצירת ה-Frames של הכלים
+        self.splitter_frame = PDFSplitterFrame(self.content_frame)
+        self.merger_frame = PDFMergerFrame(self.content_frame)
+
+        # הפעלה ראשונית של השפה (עברית כברירת מחדל)
+        self.on_language_change()
+
+    def on_language_change(self):
+        lang = self.lang_var.get()
+
+        # עדכון כותרת החלון הראשי
+        self.root.title(LOCALIZATION[lang]["title"])
+
+        # עדכון מחרוזות הטקסט בתוך ה-Frames
+        self.splitter_frame.update_ui_strings(lang)
+        self.merger_frame.update_ui_strings(lang)
+
+        # הסרה של ה-Frames לצורך סידור מחדש (RTL או LTR)
+        self.splitter_frame.pack_forget()
+        self.merger_frame.pack_forget()
+
+        if lang == "עברית":
+            # בעברית: מיזוג משמאל (שמאל לימין בקריאה של הכלים), פיצול מימין
+            self.merger_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=10)
+            self.splitter_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=20, pady=10)
+        else:
+            # באנגלית: פיצול משמאל, מיזוג מימין
+            self.splitter_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=10)
+            self.merger_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=20, pady=10)
 
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("PDF Swiss Army Knife - Split & Merge")
-    root.geometry("750x550")
-
-    # יצירת הצד השמאלי - פיצול (הוספתי את הפדינג כאן ב-pack)
-    splitter_frame = PDFSplitterFrame(root)
-    splitter_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=20)
-
-    # יצירת הצד הימני - מיזוג
-    merger_frame = PDFMergerFrame(root)
-    merger_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=20, pady=20)
-
+    app = MainApplication(root)
     root.mainloop()
